@@ -19,6 +19,25 @@ from sklearn.metrics import precision_recall_curve, average_precision_score, roc
 import seaborn as sns
 from tqdm import tqdm
 from data_selection import prepare_blocks_for_training
+
+def _is_validation_patch(position, stride, n_patches_h, n_patches_w):
+    """4x4 分块时，右下角 4 块为验证集。块索引 (bi,bj) 满足 bi>=2 且 bj>=2 的为验证块。"""
+    start_h, start_w = position
+    i, j = start_h // stride, start_w // stride
+    block_h, block_w = max(1, n_patches_h // 4), max(1, n_patches_w // 4)
+    bi, bj = min(3, i // block_h), min(3, j // block_w)
+    return (bi >= 2 and bj >= 2)
+
+def _split_patches_by_spatial(patches_list, stride, n_patches_h, n_patches_w):
+    """将 patch 列表按 4x4 空间划分为训练集与验证集。"""
+    train_patches, val_patches = [], []
+    for p in patches_list:
+        if _is_validation_patch(p['position'], stride, n_patches_h, n_patches_w):
+            val_patches.append(p)
+        else:
+            train_patches.append(p)
+    return train_patches, val_patches
+
 import json
 import argparse
 import multiprocessing
@@ -123,51 +142,39 @@ class WeightedBCEWithLogitsLoss(nn.Module):
 
 
 class PatchDataset(Dataset):
-    def __init__(self, patches_info, is_train=True, train_ratio=0.7, augmentation_factor=5, normalization_params=None):
-
+    def __init__(self, patches_info, is_train=True, normalization_params=None):
+        """不使用数据增强。训练/验证按 4x4 空间划分：整图分为 4x4 块，右下角 4 块为验证集，其余为训练集。"""
         self.is_train = is_train
-        self.augmentation_factor = augmentation_factor
         self.normalization_params = normalization_params
-  
+
         pos_patches = patches_info['pos_patches']
         neg_patches = patches_info['neg_patches']
-        
-        random.shuffle(pos_patches)
-        split_idx = int(len(pos_patches) * train_ratio)
-        
-        if is_train:
-            selected_pos_patches = pos_patches[:split_idx]
-          
-        else:
-            selected_pos_patches = pos_patches[split_idx:]
+        stride = patches_info['stride']
+        n_patches_h = patches_info['n_patches_h']
+        n_patches_w = patches_info['n_patches_w']
 
-        if is_train and augmentation_factor > 1:
-            augmented_pos_patches = []
-            for patch in selected_pos_patches:
-           
-                augmented_pos_patches.append(patch)
-            
-                for _ in range(augmentation_factor - 1):
-                    aug_patch = self.augment_patch(patch)
-                    augmented_pos_patches.append(aug_patch)
-            selected_pos_patches = augmented_pos_patches
-        
-        n_neg_needed = int(len(selected_pos_patches) * 2)
-        if len(neg_patches) >= n_neg_needed:
-            selected_neg_patches = random.sample(neg_patches, n_neg_needed)
+        train_pos, val_pos = _split_patches_by_spatial(pos_patches, stride, n_patches_h, n_patches_w)
+        train_neg, val_neg = _split_patches_by_spatial(neg_patches, stride, n_patches_h, n_patches_w)
+
+        if is_train:
+            selected_pos_patches = train_pos
+            selected_neg_pool = train_neg
         else:
-       
-            selected_neg_patches = random.choices(neg_patches, k=n_neg_needed)
-        
-    
+            selected_pos_patches = val_pos
+            selected_neg_pool = val_neg
+
+        n_neg_needed = int(len(selected_pos_patches) * 2)
+        if len(selected_neg_pool) >= n_neg_needed:
+            selected_neg_patches = random.sample(selected_neg_pool, n_neg_needed)
+        else:
+            selected_neg_patches = random.choices(selected_neg_pool, k=n_neg_needed) if selected_neg_pool else []
+
         self.patches = selected_pos_patches + selected_neg_patches
         self.labels = [1] * len(selected_pos_patches) + [0] * len(selected_neg_patches)
-        
-      
+
         combined = list(zip(self.patches, self.labels))
         random.shuffle(combined)
         self.patches, self.labels = zip(*combined)
-        
 
     def __len__(self):
         return len(self.patches)
@@ -175,62 +182,22 @@ class PatchDataset(Dataset):
     def __getitem__(self, idx):
         patch_info = self.patches[idx]
         label = self.labels[idx]
-        
-        
+
         x = patch_info['data'].copy()
         y = patch_info['label'].copy()
-        
-       
+
         if self.normalization_params is not None:
             means = self.normalization_params['means']
             stds = self.normalization_params['stds']
             for i in range(x.shape[0]):
                 x[i] = (x[i] - means[i]) / (stds[i] + 1e-8)
-        
-        
+
         x = torch.from_numpy(x).float()
         y = torch.from_numpy(y).float()
-        
 
         y = y.unsqueeze(0)
-        
-        return x, y
 
-    def augment_patch(self, patch_info):
-      
-        data = patch_info['data'].copy()
-        label = patch_info['label'].copy()
-        
-   
-        aug_type = random.choice(['flip_h', 'flip_v', 'rotate_90', 'rotate_180', 'rotate_270'])
-        
-        if aug_type == 'flip_h':
-    
-            data = np.flip(data, axis=2)
-            label = np.flip(label, axis=1)
-        elif aug_type == 'flip_v':
-    
-            data = np.flip(data, axis=1)
-            label = np.flip(label, axis=0)
-        elif aug_type == 'rotate_90':
-    
-            data = np.rot90(data, k=1, axes=(1, 2))
-            label = np.rot90(label, k=1)
-        elif aug_type == 'rotate_180':
-       
-            data = np.rot90(data, k=2, axes=(1, 2))
-            label = np.rot90(label, k=2)
-        elif aug_type == 'rotate_270':
-    
-            data = np.rot90(data, k=3, axes=(1, 2))
-            label = np.rot90(label, k=3)
-        
-        return {
-            'data': data,
-            'label': label,
-            'has_positive': patch_info['has_positive'],
-            'positive_ratio': patch_info['positive_ratio']
-        }
+        return x, y
 
 
 def prepare_datasets(data_files, label_fn, target_size=(2592, 2016)):
@@ -240,14 +207,14 @@ def prepare_datasets(data_files, label_fn, target_size=(2592, 2016)):
         label_fn=label_fn,
         target_size=target_size
     )
-    
 
-    train_ratio = 0.7
-    pos_patches = patches_info['pos_patches']
-    split_idx = int(len(pos_patches) * train_ratio)
-    train_pos_patches = pos_patches[:split_idx]
-    
- 
+    stride = patches_info['stride']
+    n_patches_h = patches_info['n_patches_h']
+    n_patches_w = patches_info['n_patches_w']
+    train_pos_patches, _ = _split_patches_by_spatial(
+        patches_info['pos_patches'], stride, n_patches_h, n_patches_w
+    )
+
     train_data_list = []
     for patch in train_pos_patches:
         train_data_list.append(patch['data'])
@@ -278,16 +245,13 @@ def prepare_datasets(data_files, label_fn, target_size=(2592, 2016)):
     train_dataset = PatchDataset(
         patches_info=patches_info,
         is_train=True,
-        train_ratio=0.7, 
-        augmentation_factor=5, 
-        normalization_params=normalization_params  
+        normalization_params=normalization_params
     )
-    
+
     val_dataset = PatchDataset(
         patches_info=patches_info,
         is_train=False,
-        train_ratio=0.7,  
-        normalization_params=normalization_params  
+        normalization_params=normalization_params
     )
     
     return train_dataset, val_dataset
@@ -755,8 +719,7 @@ def save_final_metrics(metrics, history, result_dir):
             'input_files_count': 15,
             'patch_size': 32,
             'stride': 32,
-            'augmentation_factor': 5,
-            'train_val_ratio': '7:3',
+            'train_val_split': '4x4_spatial_bottom_right_4_blocks_as_val',
             'pos_neg_ratio': '1:2'
         }
     }

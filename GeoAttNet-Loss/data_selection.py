@@ -199,7 +199,11 @@ def stack_all_rasters(file_paths, target_crs, target_transform, target_shape):
         bands.append(arr)
     return np.stack(bands)
 
-def rasterize_labels(label_fn, target_crs, target_transform, target_shape, buffer_m=2500):
+# 确定正样本的缓冲距离(m)与比例阈值
+BUFFER_M = 2500
+POSITIVE_RATIO_THRESHOLD = 0.05
+
+def rasterize_labels(label_fn, target_crs, target_transform, target_shape, buffer_m=BUFFER_M):
     gdf = gpd.read_file(label_fn)
  
     gdf_proj = gdf.to_crs(epsg=3857)
@@ -248,7 +252,7 @@ def extract_patches(data_array, labels, patch_size=32, stride=32):
             
          
             positive_ratio = np.sum(patch_label > 0) / patch_label.size
-            has_positive = positive_ratio > 0.05  
+            has_positive = positive_ratio > POSITIVE_RATIO_THRESHOLD  
             
             patch_info = {
                 'position': (start_h, start_w),
@@ -290,7 +294,7 @@ def prepare_blocks_for_training(data_files, label_fn, target_size=(2592, 2016)):
     
     data_array = stack_all_rasters(data_files, target_crs, target_transform, target_shape)
    
-    labels = rasterize_labels(label_fn, target_crs, target_transform, target_shape, buffer_m=2500)
+    labels = rasterize_labels(label_fn, target_crs, target_transform, target_shape, buffer_m=BUFFER_M)
    
     
     print(f"\nUsing original data without PCA...")
