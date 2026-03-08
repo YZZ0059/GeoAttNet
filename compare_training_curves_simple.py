@@ -12,7 +12,6 @@ plt.rcParams['font.family'] = 'Times New Roman'
 plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
-
 model_infos = [
     {"name": "GeoAttNet", "history_path": "GeoAttNet-All/result/history.npy", 
      "roc_path": "GeoAttNet-All/result/roc_data.npz"},

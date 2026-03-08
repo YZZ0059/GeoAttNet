@@ -80,9 +80,8 @@ class GeochemicalInterpolator:
                 'missing_coords': missing_coords,
                 'valid_coords': valid_coords,
                 'spatial_analysis': spatial_analysis
-            }
-            
-            
+            }  
+                
         return missing_patterns
     
     def _analyze_spatial_distribution(self, missing_mask):

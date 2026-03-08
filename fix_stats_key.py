@@ -1,7 +1,6 @@
 
 import numpy as np
 
-
 stats = np.load('train_stats_frome.npy', allow_pickle=True).item()
 changed = False
 
