@@ -20,7 +20,7 @@ from tqdm import tqdm
 from data_selection import prepare_blocks_for_training
 
 def _is_validation_patch(position, stride, n_patches_h, n_patches_w):
-    """4x4 分块时，右下角 4 块为验证集。块索引 (bi,bj) 满足 bi>=2 且 bj>=2 的为验证块。"""
+    
     start_h, start_w = position
     i, j = start_h // stride, start_w // stride
     block_h, block_w = max(1, n_patches_h // 4), max(1, n_patches_w // 4)
@@ -28,7 +28,7 @@ def _is_validation_patch(position, stride, n_patches_h, n_patches_w):
     return (bi >= 2 and bj >= 2)
 
 def _split_patches_by_spatial(patches_list, stride, n_patches_h, n_patches_w):
-    """将 patch 列表按 4x4 空间划分为训练集与验证集。"""
+
     train_patches, val_patches = [], []
     for p in patches_list:
         if _is_validation_patch(p['position'], stride, n_patches_h, n_patches_w):
@@ -137,7 +137,7 @@ class WeightedBCEWithLogitsLoss(nn.Module):
 
 class PatchDataset(Dataset):
     def __init__(self, patches_info, is_train=True, normalization_params=None):
-        """不使用数据增强。训练/验证按 4x4 空间划分：整图分为 4x4 块，右下角 4 块为验证集，其余为训练集。"""
+      
         self.is_train = is_train
         self.normalization_params = normalization_params
 

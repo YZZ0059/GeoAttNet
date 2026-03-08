@@ -199,7 +199,6 @@ def stack_all_rasters(file_paths, target_crs, target_transform, target_shape):
         bands.append(arr)
     return np.stack(bands)
 
-# 确定正样本的缓冲距离(m)与比例阈值
 BUFFER_M = 2500
 POSITIVE_RATIO_THRESHOLD = 0.05
 
