@@ -32,7 +32,7 @@ from standardize_for_prediction import standardize_data
 
 
 CONFIG = {
-    "model_path": os.path.join("GeoAttNet-loss","result", "best_model.pth"),
+    "model_path": os.path.join("GeoAttNet-Loss", "result", "best_model.pth"),
     "data_files": [
   
         r'interpolated_results/1chemK_ppm.tif', 
@@ -56,7 +56,7 @@ CONFIG = {
     ],
     "mineral_points_file": r'data_frome/uranium_occurrences.gpkg',
     "stats_path": "train_stats_frome.npy",
-    "output_dir": os.path.join("GeoAttNet-loss", "prediction_results_frome"), 
+    "output_dir": os.path.join("GeoAttNet-Loss", "prediction_results_frome"), 
     "target_shape": (2592, 2016),  
     "patch_size": 32,  
     "stride": 8  
@@ -79,9 +79,9 @@ class MineralPredictor:
     def _load_model(self, model_path):
       
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"no: {model_path}")
+            raise FileNotFoundError(f"Model file not found: {model_path}")
         
-        model = DeepUNet(in_channels=15, num_classes=1, dropout_rate=0.6, use_attention=False)
+        model = DeepUNet(in_channels=15, num_classes=1, dropout_rate=0.2, use_attention=False)
         
         model.load_state_dict(torch.load(model_path, map_location=self.device))
         model = model.to(self.device)

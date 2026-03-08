@@ -24,8 +24,8 @@ This repository contains the implementation of GeoAttNet, a deep learning framew
 │   ├── test_model.py             # Advanced testing pipeline
 │   └── train_GeoAttNet.py        # Training with attention mechanisms
 ├── GeoAttNet-Loss/               # Version with advanced loss functions
-│   ├── GeoAttNet_model.py        # U-Net with optimized architecture
-│   ├── data_selection.py         # Enhanced data selection
+│   ├── GeoAttNet_model.py        # Same DeepUNet+CBAM as main; differs in loss
+│   ├── data_selection.py         # Data processing (same as other variants)
 │   ├── standardize_for_prediction.py  # Advanced standardization
 │   ├── test_model.py             # Comprehensive testing
 │   └── train_GeoAttNet.py        # Training with Focal + Dice loss
@@ -149,14 +149,14 @@ Defines the DeepUNet architecture with:
 #### `data_selection.py`
 Handles geospatial data processing:
 - Multi-raster alignment and stacking
-- Label rasterization with buffer zones
-- Patch extraction with configurable stride
+- Label rasterization with buffer zones (default 2500 m; positive-patch threshold 0.05)
+- Patch extraction with configurable stride (32×32 non-overlapping)
 - Coordinate reference system management
 
 #### `train_GeoAttNet.py`
 Training pipeline including:
-- Data loading and augmentation
-- Loss function implementation (Focal + Dice)
+- Data loading and preprocessing (no data augmentation; 4×4 spatial train/validation split)
+- Loss function implementation (Focal + Dice, or BCE for Base)
 - Learning rate scheduling
 - Model checkpointing and validation
 
@@ -202,7 +202,10 @@ Automated interpolation pipeline:
 - **Geophysical/Geochemical Rasters**: Multi-band GeoTIFF files with consistent CRS
 - **Mineral Occurrences**: Point data in GeoPackage (.gpkg) format
 - **Coordinate System**: EPSG:4326 (WGS84) recommended
-- **Resolution**: 0.001° 
+- **Resolution**: 0.001°
+
+### Training/Validation Split
+- The full raster is divided into a **4×4 grid** of blocks; the **bottom-right 4 blocks** are used as the validation set, the remaining 12 blocks as the training set (no random split, no data augmentation). 
 
 ### Supported Data Types
 - Geochemical element concentrations

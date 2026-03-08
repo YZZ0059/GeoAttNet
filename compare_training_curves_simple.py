@@ -13,13 +13,13 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 model_infos = [
-    {"name": "GeoAttNet", "history_path": "GeoAttNet-All/result/history.npy", 
-     "roc_path": "GeoAttNet-All/result/roc_data.npz"},
-    {"name": "GeoAttNet(CBAM)", "history_path": "GeoAttNet-CBAM/result/history.npy", 
+    {"name": "GeoAttNet-Base", "history_path": "GeoAttNet-Base/result/history.npy",
+     "roc_path": "GeoAttNet-Base/result/roc_data.npz"},
+    {"name": "GeoAttNet-CBAM", "history_path": "GeoAttNet-CBAM/result/history.npy",
      "roc_path": "GeoAttNet-CBAM/result/roc_data.npz"},
-    {"name": "GeoAttNet(Loss)", "history_path": "GeoAttNet-loss/result/history.npy", 
-     "roc_path": "GeoAttNet-loss/result/roc_data.npz"},
-    {"name": "GeoAttNet(CBAM+Loss)", "history_path": "GeoAttNet/result/history.npy", 
+    {"name": "GeoAttNet-Loss", "history_path": "GeoAttNet-Loss/result/history.npy",
+     "roc_path": "GeoAttNet-Loss/result/roc_data.npz"},
+    {"name": "GeoAttNet", "history_path": "GeoAttNet/result/history.npy",
      "roc_path": "GeoAttNet/result/roc_data.npz"},
 ]
 OUTPUT_PATH_TEMPLATE = 'comparison_result/comodel_comparison_curves_{}.png' 
@@ -187,7 +187,7 @@ def main():
     legend_names = args.legend_names if args.legend_names else None
 
     if legend_names and len(legend_names) != len(legend_order):
-        print(f"Warning: The number of provided legend names ({len(legend_names)}) does not match the number of models ({len(legend_order)})not match.")
+        print(f"Warning: The number of provided legend names ({len(legend_names)}) does not match the number of models ({len(legend_order)}).")
         return
 
     if legend_names:

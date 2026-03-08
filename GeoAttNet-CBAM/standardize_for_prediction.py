@@ -42,8 +42,10 @@ def standardize_data(file_list, mode='fit', stats_path='train_stats.npy', target
         return data
     elif mode == 'transform':
         stats = np.load(stats_path, allow_pickle=True).item()
-        means = stats['mean']
-        stds = stats['std']
+        means = stats.get('mean', stats.get('means'))
+        stds = stats.get('std', stats.get('stds'))
+        if means is None or stds is None:
+            raise KeyError("stats 需包含 'mean'/'means' 与 'std'/'stds'")
         for i in range(data.shape[0]):
             if stds[i] < 1e-6:
  

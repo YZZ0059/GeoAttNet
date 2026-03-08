@@ -68,7 +68,7 @@ class MineralPredictor:
         
     def _load_model(self, model_path):
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"no {model_path}")
+            raise FileNotFoundError(f"Model file not found: {model_path}")
         
         model = DeepUNet(in_channels=15, num_classes=1, dropout_rate=0.2)
 
